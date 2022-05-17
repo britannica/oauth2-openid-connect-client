@@ -6,6 +6,7 @@ namespace OpenIDConnectClient;
 
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use League\OAuth2\Client\Grant\AbstractGrant;
 use League\OAuth2\Client\Provider\GenericProvider;
 use OpenIDConnectClient\Exception\InvalidTokenException;
@@ -90,13 +91,13 @@ final class OpenIDConnectProvider extends GenericProvider
         if (is_array($this->publicKey)) {
             return array_map(
                 static function (string $key): Key {
-                    return new Key($key);
+                    return InMemory::plainText($key);
                 },
                 $this->publicKey,
             );
         }
 
-        return [new Key($this->publicKey)];
+        return [InMemory::plainText($this->publicKey)];
     }
 
     /**
