@@ -7,6 +7,7 @@ namespace OpenIDConnectClient;
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Validation\Validator as JwtValidator;
 use League\OAuth2\Client\Grant\AbstractGrant;
 use League\OAuth2\Client\Provider\GenericProvider;
 use OpenIDConnectClient\Exception\InvalidTokenException;
@@ -23,6 +24,8 @@ final class OpenIDConnectProvider extends GenericProvider
     private ValidatorChain $validatorChain;
     private Signer $signer;
 
+    private array $jwtValidationConstraints;
+
     /** @var string|array<string> */
     protected $publicKey;
     protected string $idTokenIssuer;
@@ -37,6 +40,13 @@ final class OpenIDConnectProvider extends GenericProvider
         Assert::isInstanceOf($collaborators['signer'], Signer::class);
 
         $this->signer = $collaborators['signer'];
+
+
+        if (isset($collaborators['jwtValidationConstraints'])) {
+            $this->jwtValidationConstraints = $collaborators['jwtValidationConstraints'];
+        } else {
+            $this->jwtValidationConstraints = [];
+        }
 
         if (!isset($collaborators['validatorChain'])) {
             $collaborators['validatorChain'] = new ValidatorChain();
@@ -127,11 +137,11 @@ final class OpenIDConnectProvider extends GenericProvider
         // The alg value SHOULD be the default of RS256 or the algorithm sent by the Client in the
         // id_token_signed_response_alg parameter during Registration.
         $verified = false;
-        foreach ($this->getPublicKey() as $key) {
-            if ($token->verify($this->signer, $key) !== false) {
-                $verified = true;
-                break;
-            }
+        $jwtValidator = new JwtValidator();
+        if ($jwtValidator->validate($token, ...$this->jwtValidationConstraints)) {
+
+            $verified = true;
+            break;
         }
 
         if (!$verified) {
