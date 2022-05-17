@@ -175,7 +175,7 @@ final class OpenIDConnectProvider extends GenericProvider
         // If the ID Token contains multiple audiences, the Client SHOULD verify that an azp Claim is present.
         // If an azp (authorized party) Claim is present,
         // the Client SHOULD verify that its client_id is the Claim Value.
-        if ($token->hasClaim('azp')) {
+        if ($token->claims()->has('azp')) {
             $data['azp'] = $this->clientId;
         }
 
