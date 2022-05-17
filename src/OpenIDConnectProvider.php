@@ -141,7 +141,6 @@ final class OpenIDConnectProvider extends GenericProvider
         if ($jwtValidator->validate($token, ...$this->jwtValidationConstraints)) {
 
             $verified = true;
-            break;
         }
 
         if (!$verified) {
