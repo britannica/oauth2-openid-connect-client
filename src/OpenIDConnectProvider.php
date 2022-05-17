@@ -18,6 +18,8 @@ use OpenIDConnectClient\Validator\LesserOrEqualsTo;
 use OpenIDConnectClient\Validator\NotEmpty;
 use OpenIDConnectClient\Validator\ValidatorChain;
 use Webmozart\Assert\Assert;
+use DateInterval;
+use DateTimeImmutable;
 
 final class OpenIDConnectProvider extends GenericProvider
 {
@@ -170,14 +172,16 @@ final class OpenIDConnectProvider extends GenericProvider
         // TODO
         // If the acr Claim was requested, the Client SHOULD check that the asserted Claim Value is appropriate.
         // The meaning and processing of acr Claim Values is out of scope for this specification.
-        $currentTime = time();
+        //$currentTime = time();
+        $currentTime = new DateTimeImmutable();
         $nbfToleranceSeconds = isset($options['nbfToleranceSeconds']) ? (int)$options['nbfToleranceSeconds'] : 0;
+        $nbfToleranceSecondsInterval = new DateInterval('PT' . $nbfToleranceSeconds . 'S');
         $data = [
             'iss' => $this->getIdTokenIssuer(),
             'exp' => $currentTime,
             'auth_time' => $currentTime,
             'iat' => $currentTime,
-            'nbf' => $currentTime + $nbfToleranceSeconds,
+            'nbf' => $currentTime->add($nbfToleranceSecondsInterval),
             'aud' => $this->clientId,
         ];
 
