@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OpenIDConnectClient\Validator;
 
 use Webmozart\Assert\Assert;
+use DateTimeImmutable;
 
 final class LesserOrEqualsTo implements ValidatorInterface
 {
@@ -12,8 +13,8 @@ final class LesserOrEqualsTo implements ValidatorInterface
 
     public function isValid($expectedValue, $actualValue): bool
     {
-        Assert::nullOrIntegerish($expectedValue);
-        Assert::nullOrIntegerish($actualValue);
+        Assert::isInstanceOf($expectedValue, DateTimeImmutable::class);
+        Assert::isInstanceOf($actualValue, DateTimeImmutable::class);
 
         if ($actualValue <= $expectedValue) {
             return true;

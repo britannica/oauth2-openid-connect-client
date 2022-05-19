@@ -6,6 +6,8 @@ namespace OpenIDConnectClient;
 
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
+use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Validation\Validator as JwtValidator;
 use League\OAuth2\Client\Grant\AbstractGrant;
 use League\OAuth2\Client\Provider\GenericProvider;
 use OpenIDConnectClient\Exception\InvalidTokenException;
@@ -16,11 +18,15 @@ use OpenIDConnectClient\Validator\LesserOrEqualsTo;
 use OpenIDConnectClient\Validator\NotEmpty;
 use OpenIDConnectClient\Validator\ValidatorChain;
 use Webmozart\Assert\Assert;
+use DateInterval;
+use DateTimeImmutable;
 
 final class OpenIDConnectProvider extends GenericProvider
 {
     private ValidatorChain $validatorChain;
     private Signer $signer;
+
+    private array $jwtValidationConstraints;
 
     /** @var string|array<string> */
     protected $publicKey;
@@ -36,6 +42,13 @@ final class OpenIDConnectProvider extends GenericProvider
         Assert::isInstanceOf($collaborators['signer'], Signer::class);
 
         $this->signer = $collaborators['signer'];
+
+
+        if (isset($collaborators['jwtValidationConstraints'])) {
+            $this->jwtValidationConstraints = $collaborators['jwtValidationConstraints'];
+        } else {
+            $this->jwtValidationConstraints = [];
+        }
 
         if (!isset($collaborators['validatorChain'])) {
             $collaborators['validatorChain'] = new ValidatorChain();
@@ -90,13 +103,13 @@ final class OpenIDConnectProvider extends GenericProvider
         if (is_array($this->publicKey)) {
             return array_map(
                 static function (string $key): Key {
-                    return new Key($key);
+                    return InMemory::plainText($key);
                 },
                 $this->publicKey,
             );
         }
 
-        return [new Key($this->publicKey)];
+        return [InMemory::plainText($this->publicKey)];
     }
 
     /**
@@ -126,11 +139,10 @@ final class OpenIDConnectProvider extends GenericProvider
         // The alg value SHOULD be the default of RS256 or the algorithm sent by the Client in the
         // id_token_signed_response_alg parameter during Registration.
         $verified = false;
-        foreach ($this->getPublicKey() as $key) {
-            if ($token->verify($this->signer, $key) !== false) {
-                $verified = true;
-                break;
-            }
+        $jwtValidator = new JwtValidator();
+        if ($jwtValidator->validate($token, ...$this->jwtValidationConstraints)) {
+
+            $verified = true;
         }
 
         if (!$verified) {
@@ -160,21 +172,23 @@ final class OpenIDConnectProvider extends GenericProvider
         // TODO
         // If the acr Claim was requested, the Client SHOULD check that the asserted Claim Value is appropriate.
         // The meaning and processing of acr Claim Values is out of scope for this specification.
-        $currentTime = time();
+        //$currentTime = time();
+        $currentTime = new DateTimeImmutable();
         $nbfToleranceSeconds = isset($options['nbfToleranceSeconds']) ? (int)$options['nbfToleranceSeconds'] : 0;
+        $nbfToleranceSecondsInterval = new DateInterval('PT' . $nbfToleranceSeconds . 'S');
         $data = [
             'iss' => $this->getIdTokenIssuer(),
             'exp' => $currentTime,
             'auth_time' => $currentTime,
             'iat' => $currentTime,
-            'nbf' => $currentTime + $nbfToleranceSeconds,
+            'nbf' => $currentTime->add($nbfToleranceSecondsInterval),
             'aud' => $this->clientId,
         ];
 
         // If the ID Token contains multiple audiences, the Client SHOULD verify that an azp Claim is present.
         // If an azp (authorized party) Claim is present,
         // the Client SHOULD verify that its client_id is the Claim Value.
-        if ($token->hasClaim('azp')) {
+        if ($token->claims()->has('azp')) {
             $data['azp'] = $this->clientId;
         }
 

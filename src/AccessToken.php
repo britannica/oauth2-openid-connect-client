@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace OpenIDConnectClient;
 
-use Lcobucci\JWT\Parser;
+use Lcobucci\JWT\Token\Parser;
+use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Token;
 use League\OAuth2\Client\Token\AccessToken as LeagueAccessToken;
 
@@ -17,7 +18,7 @@ final class AccessToken extends LeagueAccessToken
         parent::__construct($options);
 
         if (isset($this->values['id_token'])) {
-            $this->idToken = (new Parser())->parse($this->values['id_token']);
+            $this->idToken = (new Parser(new JoseEncoder()))->parse($this->values['id_token']);
             unset($this->values['id_token']);
         }
     }
